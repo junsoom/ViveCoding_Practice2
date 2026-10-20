@@ -1,0 +1,347 @@
+<title>우리집 레시피북</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* Layout: 좌측 레시피 목록 + 우측 상세(모바일은 한 칸씩), 주방 메모장 같은 낱장 카드 */
+:root {
+  --bg: #f3f5f1;
+  --paper: #ffffff;
+  --ink: #1f2a22;
+  --muted: #5f6d63;
+  --line: #d9e0d8;
+  --accent: #2f7d4f;      /* 대파 초록 */
+  --accent-soft: #e2f0e6;
+  --chili: #c2412d;       /* 고춧가루 */
+  --chili-soft: #fbe6e1;
+  --font-display: "Do Hyeon", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141a16; --paper: #1c241f; --ink: #e6ece7; --muted: #9aa89f; --line: #2e3a32;
+    --accent: #6cc48f; --accent-soft: #213a2b; --chili: #f0806c; --chili-soft: #3a2420;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141a16; --paper: #1c241f; --ink: #e6ece7; --muted: #9aa89f; --line: #2e3a32;
+  --accent: #6cc48f; --accent-soft: #213a2b; --chili: #f0806c; --chili-soft: #3a2420;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: 1.1; margin: 0; }
+.sub { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
+button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); padding: 8px 14px; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--paper); font-weight: 600; }
+button.danger { color: var(--chili); border-color: var(--chili); }
+button.ghost { border-color: transparent; background: transparent; color: var(--muted); padding-inline: 8px; }
+button:disabled { opacity: .5; cursor: default; }
+
+.layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+.layout > * { min-width: 0; }
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  .layout.showing-detail .list-col { display: none; }
+  .layout:not(.showing-detail) .detail-col { display: none; }
+}
+@media (min-width: 761px) { .back-btn { display: none; } }
+
+.controls { display: grid; gap: 10px; margin-bottom: 12px; }
+input[type=search], input[type=text], input[type=url], textarea, select {
+  font: inherit; width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink);
+}
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 13px; padding: 4px 11px; border-radius: 999px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.list { display: grid; gap: 8px; }
+.item { text-align: left; width: 100%; padding: 12px 14px; display: grid; gap: 3px; }
+.item[aria-current="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.item .name { font-weight: 600; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--muted); font-size: 12.5px; }
+.badge { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.badge.ours { background: var(--chili-soft); color: var(--chili); }
+.done { color: var(--accent); font-weight: 600; }
+
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 24px; }
+.card h2 { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1.15; margin: 6px 0 8px; text-wrap: balance; }
+.card h3 { font-size: 13px; letter-spacing: .06em; color: var(--muted); margin: 22px 0 8px; font-weight: 600; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.ing { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 24px; }
+.ing-group { grid-column: 1 / -1; font-weight: 600; color: var(--accent); font-size: 13px; margin-top: 6px; }
+.ing-row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dashed var(--line); }
+.ing-row .amt { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+ol.steps { padding-left: 0; margin: 0; list-style: none; counter-reset: s; display: grid; gap: 10px; }
+ol.steps li { counter-increment: s; display: grid; grid-template-columns: 28px 1fr; gap: 10px; }
+ol.steps li::before { content: counter(s); font-family: var(--font-display); font-size: 20px; color: var(--chili); line-height: 1.3; }
+.memo { background: var(--chili-soft); border-radius: 10px; padding: 12px 14px; white-space: pre-wrap; }
+.src { font-size: 13px; color: var(--muted); margin-top: 22px; word-break: break-all; }
+.src a { color: var(--accent); }
+
+form.edit { display: grid; gap: 14px; }
+form.edit label { display: grid; gap: 5px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.row2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.hint { font-weight: 400; font-size: 12px; }
+textarea { min-height: 120px; resize: vertical; line-height: 1.55; }
+.confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--chili-soft); }
+
+.empty { color: var(--muted); padding: 30px 10px; text-align: center; }
+.notice { font-size: 13px; color: var(--muted); padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; margin-bottom: 12px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-size: 14px; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>우리집 레시피북</h1>
+      <p class="sub">김진순 님 레시피 + 우리 둘이 만든 레시피. 고치거나 메모하면 둘 다 바로 보여요.</p>
+    </div>
+    <button class="primary" id="addBtn" type="button">+ 레시피 추가</button>
+  </header>
+
+  <div class="layout" id="layout">
+    <section class="list-col">
+      <div class="controls">
+        <input type="search" id="q" placeholder="요리 이름, 재료로 검색 (예: 앞다리살)" aria-label="검색">
+        <div class="chips" id="srcChips"></div>
+        <div class="chips" id="catChips"></div>
+      </div>
+      <div id="notice" class="notice" hidden></div>
+      <div class="list" id="list"><p class="empty">레시피를 불러오는 중…</p></div>
+    </section>
+    <section class="detail-col" id="detail"></section>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const CATS = ["볶음", "찌개·국", "면", "반찬", "소스·양념", "밥", "기타"];
+const SOURCES = [["all", "전체"], ["김진순", "김진순 님"], ["우리", "우리 레시피"]];
+const state = { recipes: [], q: "", src: "all", cat: "all", selected: null, mode: "view", confirmDel: false, canWrite: true, loaded: false, db: null };
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 2200);
+}
+
+// "# 양념" 줄은 묶음 제목, "재료 | 양" 줄은 재료
+function parseIngredients(text) {
+  return text.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+    if (l.startsWith("#")) return { group: l.replace(/^#+\s*/, "") };
+    const [name, ...rest] = l.split("|");
+    return { name: name.trim(), amount: rest.join("|").trim() };
+  });
+}
+function ingredientsToText(list) {
+  return (list || []).map((i) => (i.group ? "# " + i.group : i.amount ? `${i.name} | ${i.amount}` : i.name)).join("\n");
+}
+
+function filtered() {
+  const q = state.q.trim().toLowerCase();
+  return state.recipes.filter((r) => {
+    if (state.src !== "all" && r.source !== state.src) return false;
+    if (state.cat !== "all" && r.category !== state.cat) return false;
+    if (!q) return true;
+    const hay = [r.title, r.category, r.memo, ...(r.ingredients || []).map((i) => i.name || i.group)].join(" ").toLowerCase();
+    return hay.includes(q);
+  }).sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+}
+
+function renderChips() {
+  $("srcChips").innerHTML = SOURCES.map(([k, l]) => `<button type="button" class="chip" data-src="${k}" aria-pressed="${state.src === k}">${l}</button>`).join("");
+  const used = CATS.filter((c) => state.recipes.some((r) => r.category === c));
+  $("catChips").innerHTML = [["all", "모든 종류"], ...used.map((c) => [c, c])]
+    .map(([k, l]) => `<button type="button" class="chip" data-cat="${esc(k)}" aria-pressed="${state.cat === k}">${esc(l)}</button>`).join("");
+}
+
+function renderList() {
+  const items = filtered();
+  if (!state.loaded) return;
+  if (!state.recipes.length) {
+    $("list").innerHTML = `<p class="empty">아직 레시피가 없어요.<br>위의 “+ 레시피 추가”로 첫 레시피를 적어보세요.</p>`;
+    return;
+  }
+  if (!items.length) { $("list").innerHTML = `<p class="empty">조건에 맞는 레시피가 없어요.</p>`; return; }
+  $("list").innerHTML = items.map((r) => `
+    <button type="button" class="item" data-id="${esc(r.id)}" aria-current="${state.selected === r.id}">
+      <span class="name">${esc(r.title)}</span>
+      <span class="meta">
+        <span class="badge ${r.source === "우리" ? "ours" : ""}">${r.source === "우리" ? "우리" : "김진순"}</span>
+        ${r.category ? `<span>${esc(r.category)}</span>` : ""}
+        ${r.servings ? `<span>· ${esc(r.servings)}</span>` : ""}
+        ${r.cooked ? `<span class="done">· 해봤어요 ✓</span>` : ""}
+      </span>
+    </button>`).join("");
+}
+
+function renderDetail() {
+  const el = $("detail");
+  $("layout").classList.toggle("showing-detail", state.mode !== "view" || !!state.selected);
+  if (state.mode === "edit" || state.mode === "new") return renderForm(el);
+  const r = state.recipes.find((x) => x.id === state.selected);
+  if (!r) {
+    el.innerHTML = `<div class="card"><p class="empty">왼쪽에서 레시피를 고르면 재료와 순서가 여기 나와요.</p></div>`;
+    return;
+  }
+  const ing = (r.ingredients || []).map((i) => i.group
+    ? `<div class="ing-group">${esc(i.group)}</div>`
+    : `<div class="ing-row"><span>${esc(i.name)}</span><span class="amt">${esc(i.amount)}</span></div>`).join("");
+  const w = state.canWrite;
+  el.innerHTML = `<article class="card">
+    <button type="button" class="ghost back-btn" data-act="back">← 목록</button>
+    <div class="meta">
+      <span class="badge ${r.source === "우리" ? "ours" : ""}">${r.source === "우리" ? "우리 레시피" : "김진순 님 레시피"}</span>
+      ${r.category ? `<span>${esc(r.category)}</span>` : ""}
+      ${r.servings ? `<span>· ${esc(r.servings)}</span>` : ""}
+      ${r.time ? `<span>· ${esc(r.time)}</span>` : ""}
+    </div>
+    <h2>${esc(r.title)}</h2>
+    ${w ? `<div class="actions">
+      <button type="button" data-act="cooked">${r.cooked ? "해봤어요 ✓" : "해봤어요 표시"}</button>
+      <button type="button" data-act="edit">수정</button>
+      <button type="button" class="danger" data-act="del">삭제</button>
+    </div>` : ""}
+    ${state.confirmDel ? `<div class="confirm" style="margin-top:10px">
+      <span>“${esc(r.title)}”를 지울까요? 되돌릴 수 없어요.</span>
+      <button type="button" class="danger" data-act="del-yes">삭제</button>
+      <button type="button" data-act="del-no">취소</button></div>` : ""}
+    ${r.memo ? `<h3>우리 메모</h3><div class="memo">${esc(r.memo)}</div>` : ""}
+    <h3>재료</h3>
+    <div class="ing">${ing || `<span class="hint">적힌 재료가 없어요.</span>`}</div>
+    <h3>만드는 순서</h3>
+    <ol class="steps">${(r.steps || []).map((s) => `<li><span>${esc(s)}</span></li>`).join("")}</ol>
+    ${r.sourceUrl ? `<p class="src">참고한 곳: <a href="${esc(r.sourceUrl)}" target="_blank" rel="noopener">${esc(r.sourceNote || r.sourceUrl)}</a></p>` : ""}
+  </article>`;
+}
+
+function renderForm(el) {
+  const r = state.mode === "edit" ? state.recipes.find((x) => x.id === state.selected) || {} : { source: "우리" };
+  el.innerHTML = `<form class="card edit" id="editForm">
+    <h2>${state.mode === "new" ? "새 레시피" : "레시피 수정"}</h2>
+    <label>요리 이름<input type="text" id="f-title" required value="${esc(r.title)}" placeholder="예: 김치볶음밥"></label>
+    <div class="row2">
+      <label>출처<select id="f-source">
+        <option value="우리" ${r.source === "우리" ? "selected" : ""}>우리 레시피</option>
+        <option value="김진순" ${r.source === "김진순" ? "selected" : ""}>김진순 님</option></select></label>
+      <label>종류<select id="f-cat">${CATS.map((c) => `<option ${r.category === c ? "selected" : ""}>${c}</option>`).join("")}</select></label>
+      <label>분량<input type="text" id="f-serv" value="${esc(r.servings)}" placeholder="2인분"></label>
+      <label>시간<input type="text" id="f-time" value="${esc(r.time)}" placeholder="20분"></label>
+    </div>
+    <label>재료 <span class="hint">한 줄에 하나씩 “재료 | 양”. “# 양념”처럼 #으로 시작하면 묶음 제목이에요.</span>
+      <textarea id="f-ing" rows="9" placeholder="# 주재료&#10;돼지고기 앞다리살 | 600g&#10;# 양념&#10;고추장 | 1큰술">${esc(ingredientsToText(r.ingredients))}</textarea></label>
+    <label>만드는 순서 <span class="hint">한 줄이 한 단계예요.</span>
+      <textarea id="f-steps" rows="8">${esc((r.steps || []).join("\n"))}</textarea></label>
+    <label>우리 메모 <span class="hint">간 조절, 다음엔 이렇게 해보자 등</span>
+      <textarea id="f-memo" rows="3" style="min-height:80px">${esc(r.memo)}</textarea></label>
+    <label>참고 링크 <span class="hint">인스타·유튜브 주소 (선택)</span>
+      <input type="url" id="f-url" value="${esc(r.sourceUrl)}" placeholder="https://"></label>
+    <div class="actions">
+      <button type="submit" class="primary" id="saveBtn">저장</button>
+      <button type="button" data-act="cancel">취소</button>
+    </div>
+  </form>`;
+  $("f-title").focus();
+}
+
+function render() { renderChips(); renderList(); renderDetail(); }
+
+async function save(e) {
+  e.preventDefault();
+  if (!state.db) return toast("지금은 저장할 수 없어요. 로그인 상태를 확인해 주세요.");
+  const isNew = state.mode === "new";
+  const old = isNew ? {} : state.recipes.find((x) => x.id === state.selected) || {};
+  const url = $("f-url").value.trim();
+  const body = {
+    title: $("f-title").value.trim(),
+    source: $("f-source").value,
+    category: $("f-cat").value,
+    servings: $("f-serv").value.trim(),
+    time: $("f-time").value.trim(),
+    ingredients: parseIngredients($("f-ing").value),
+    steps: $("f-steps").value.split("\n").map((s) => s.trim()).filter(Boolean),
+    memo: $("f-memo").value.trim(),
+    sourceUrl: url,
+    sourceNote: url && url === old.sourceUrl ? old.sourceNote || "" : "",
+    cooked: !!old.cooked,
+    createdAt: old.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  if (!body.title) return;
+  $("saveBtn").disabled = true;
+  try {
+    const ref = isNew ? state.db.collection("recipes").doc() : state.db.collection("recipes").doc(state.selected);
+    await ref.set(body);
+    state.selected = ref.id; state.mode = "view";
+    toast(isNew ? "레시피를 추가했어요" : "저장했어요");
+    render();
+  } catch (err) {
+    $("saveBtn").disabled = false;
+    if (err && err.code === "invalid_argument") { state.canWrite = false; toast("이 링크에서는 보기만 할 수 있어요"); }
+    else toast("저장하지 못했어요. 잠시 뒤 다시 눌러주세요.");
+  }
+}
+
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.src) { state.src = t.dataset.src; return render(); }
+  if (t.dataset.cat) { state.cat = t.dataset.cat; return render(); }
+  if (t.dataset.id) { state.selected = t.dataset.id; state.mode = "view"; state.confirmDel = false; render(); return window.scrollTo({ top: 0 }); }
+  if (t.id === "addBtn") {
+    if (!state.canWrite) return toast("이 링크에서는 보기만 할 수 있어요");
+    state.mode = "new"; state.confirmDel = false; render(); return window.scrollTo({ top: 0 });
+  }
+  const act = t.dataset.act; if (!act) return;
+  const ref = state.db && state.selected ? state.db.collection("recipes").doc(state.selected) : null;
+  if (act === "back") { state.selected = null; state.mode = "view"; return render(); }
+  if (act === "cancel") { state.mode = "view"; return render(); }
+  if (act === "edit") { state.mode = "edit"; return render(); }
+  if (act === "del") { state.confirmDel = true; return render(); }
+  if (act === "del-no") { state.confirmDel = false; return render(); }
+  try {
+    if (act === "del-yes" && ref) {
+      await ref.delete(); state.selected = null; state.confirmDel = false; toast("삭제했어요"); render();
+    }
+    if (act === "cooked" && ref) {
+      const r = state.recipes.find((x) => x.id === state.selected);
+      await ref.update({ cooked: !r.cooked });
+    }
+  } catch { toast("반영하지 못했어요. 잠시 뒤 다시 눌러주세요."); }
+});
+document.addEventListener("submit", (e) => { if (e.target.id === "editForm") save(e); });
+$("q").addEventListener("input", (e) => { state.q = e.target.value; renderList(); });
+
+render();
+
+(async () => {
+  const [db, user] = await Promise.all([window.claude?.use?.("db") ?? null, window.claude?.use?.("user") ?? null]);
+  if (!db) {
+    state.loaded = true; state.canWrite = false;
+    $("notice").hidden = false;
+    $("notice").textContent = "레시피를 불러오려면 claude.ai에 로그인한 상태로 열어주세요.";
+    $("list").innerHTML = "";
+    return render();
+  }
+  state.db = db;
+  if (user) {
+    const can = await user.can("data.write");
+    if (can === false) {
+      state.canWrite = false; $("addBtn").hidden = true;
+      $("notice").hidden = false; $("notice").textContent = "보기 전용으로 열려 있어요. 수정하려면 공유 권한을 ‘참여자’ 이상으로 받아야 해요.";
+    }
+  }
+  db.collection("recipes").onSnapshot((snap) => {
+    state.recipes = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    state.loaded = true;
+    if (state.selected && !state.recipes.some((r) => r.id === state.selected)) state.selected = null;
+    if (state.mode === "view") render(); else { renderChips(); renderList(); }
+  }, () => { $("notice").hidden = false; $("notice").textContent = "연결이 끊겼어요. 페이지를 새로고침해 주세요."; });
+})();
+</script>
